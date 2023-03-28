@@ -4,7 +4,7 @@ import { OrbitControls, Points } from "@react-three/drei";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { TextureLoader } from "three";
+import { Mesh, ShaderMaterial, TextureLoader } from "three";
 
 var glslify = require("glslify");
 
@@ -150,12 +150,13 @@ void main() {
 };
 
 const Particles = () => {
-  const ref = useRef();
+  const ref = useRef<Mesh>(null);
+  const materialRef = useRef<ShaderMaterial>(null);
 
   useFrame(({ clock }) => {
-    if (!ref?.current) return;
-    if (!ref.current?.material?.uniforms?.uTime) return;
-    ref.current.material.uniforms.uTime.value = clock.getElapsedTime();
+    if (!materialRef?.current) return;
+    if (!materialRef.current?.uniforms?.uTime) return;
+    materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
   });
   const [count, setcount] = useState(3000);
   const [radius, setradius] = useState(20);
@@ -167,15 +168,15 @@ const Particles = () => {
   //const imageTextureData = useLoader(THREE.DataTextureLoader, "/seal.png");
   //const originalColors = Float32Array.from(imageTexture.);
   useEffect(() => {
-    if (!ref.current) return;
+    if (!materialRef.current) return;
     if (!imageTexture) return;
-    if (!ref.current?.material?.uniforms?.uTexture) return;
-    ref.current.material.uniforms.uTexture.value = imageTexture;
-    ref.current.material.uniforms.uTextureSize.value = new THREE.Vector2(
+    if (!materialRef.current?.uniforms?.uTexture) return;
+    materialRef.current.uniforms.uTexture.value = imageTexture;
+    materialRef.current.uniforms.uTextureSize.value = new THREE.Vector2(
       imageTexture.image.width,
       imageTexture.image.height
     );
-  }, [ref.current, imageTexture]);
+  }, [materialRef.current, imageTexture]);
 
   const numPoints = imageTexture.image.width * imageTexture.image.height;
   let numVisible = 0;
@@ -244,7 +245,7 @@ const Particles = () => {
   }
 
   return (
-    <points ref={ref}>
+    <points>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
@@ -269,6 +270,7 @@ const Particles = () => {
       </bufferGeometry>
       {/* <pointsMaterial sizeAttenuation color={"#CCFF00"} depthWrite={true} /> */}
       <shaderMaterial
+        ref={materialRef}
         depthWrite={false}
         uniforms={CustomMaterial.uniforms}
         vertexShader={CustomMaterial.vertexShader}
