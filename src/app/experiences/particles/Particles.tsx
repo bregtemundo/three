@@ -72,9 +72,15 @@ void main() {
 
   vec3 displaced = position;
 
-  displaced.xy += vec2(random(pindex) - 0.5, random(position.x + pindex) - 0.5) * uRandom;
+  float xMove = sin(position.x +  position.y  + uTime);
+  float yMove = sin(position.y + uTime);
+
+  displaced.z += (xMove )  *  2.8;
+  //displaced.y += yMove * 0.8;
+
+  //displaced.xy += vec2(random(pindex) - 0.5, random(position.x + pindex) - 0.5) * uRandom;
 	float rndz = (random(pindex) + snoise2(vec2(pindex * 0.1, uTime * 0.1)));
-	displaced.z += rndz * (random(pindex) * 2.0 * uDepth);
+	//displaced.z += rndz * (random(pindex) * 2.0 * uDepth);
   
 
   // center
@@ -119,18 +125,22 @@ void main() {
 	// circle
 	 float border = 0.3;
 	 float radius =  0.5;
-	 float dist = radius - distance(uv, vec2(0.5));
-	 float t = smoothstep(0.0, border, dist);
+	 //float dist = radius - distance(uv, vec2(0.5));
+	 //float t = smoothstep(0.0, border, dist);
 
 	// final color
 	color = colA;
-	color.a = t + .2 ;
+	//color.a = t + .2 ;
 
 	//gl_FragColor = colB;
   
-  
+  float dist = length(gl_PointCoord - vec2(0.5, 0.5));
+  float t = dist / radius; // calculate interpolation factor
+  vec4 endColor = vec4(0.0, 0.0, 0.0, 0.0);
     if (length(gl_PointCoord - vec2(0.5, 0.5)) < radius) {
+      color.a = t;
         gl_FragColor = color;
+        //gl_FragColor = mix( endColor, color, t);
     } else {
         discard; // discard pixels outside the circle
     }
@@ -144,10 +154,12 @@ const Particles = () => {
 
   useFrame(({ clock }) => {
     if (!ref?.current) return;
+    if (!ref.current?.material?.uniforms?.uTime) return;
     ref.current.material.uniforms.uTime.value = clock.getElapsedTime();
   });
   const [count, setcount] = useState(3000);
   const [radius, setradius] = useState(20);
+  const limitPoints = false;
 
   // load an image texture from /public, loop through the pixels and create a particle for each pixel
   const imageTexture = useLoader(THREE.TextureLoader, "/sample-05.png");
@@ -157,6 +169,7 @@ const Particles = () => {
   useEffect(() => {
     if (!ref.current) return;
     if (!imageTexture) return;
+    if (!ref.current?.material?.uniforms?.uTexture) return;
     ref.current.material.uniforms.uTexture.value = imageTexture;
     ref.current.material.uniforms.uTextureSize.value = new THREE.Vector2(
       imageTexture.image.width,
@@ -166,7 +179,7 @@ const Particles = () => {
 
   const numPoints = imageTexture.image.width * imageTexture.image.height;
   let numVisible = 0;
-  const threshold = 0;
+  const threshold = 20;
   // Get image data
   const canvas = document.createElement("canvas");
   canvas.width = imageTexture.image.width;
@@ -181,7 +194,7 @@ const Particles = () => {
     if (originalColors[i * 4 + 0] > threshold) numVisible++;
   }
 
-  numVisible = numPoints;
+  if (!limitPoints) numVisible = numPoints;
 
   // positions
   const positions = new Float32Array(numVisible * 3);
@@ -209,7 +222,7 @@ const Particles = () => {
   // const vertexColors = new Float32Array(numVisible * 4);
 
   for (let i = 0, j = 0; i < numPoints; i++) {
-    //if (originalColors[i * 4 + 0] <= threshold) continue;
+    if (limitPoints && originalColors[i * 4 + 0] <= threshold) continue;
 
     // vertexColors[j * 4 + 0] = originalColors[i * 4 + 0] / 255;
     // vertexColors[j * 4 + 1] = originalColors[i * 4 + 1] / 255;
@@ -229,7 +242,6 @@ const Particles = () => {
 
     j++;
   }
-  console.log(positions);
 
   return (
     <points ref={ref}>
@@ -255,7 +267,7 @@ const Particles = () => {
           itemSize={4}
         /> */}
       </bufferGeometry>
-      {/* <pointsMaterial vertexColors={true} sizeAttenuation depthWrite={true} /> */}
+      {/* <pointsMaterial sizeAttenuation color={"#CCFF00"} depthWrite={true} /> */}
       <shaderMaterial
         depthWrite={false}
         uniforms={CustomMaterial.uniforms}
