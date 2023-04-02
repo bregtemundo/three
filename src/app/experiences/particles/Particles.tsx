@@ -21,7 +21,7 @@ const CustomMaterial = {
     uTouch: { value: null },
     uMotion: { value: 3.0 },
     uMouse: { value: new THREE.Vector2(0, 0) },
-    uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    uResolution: { value: new THREE.Vector2(0, 0) },
   },
   vertexShader: `
   attribute float pindex;
