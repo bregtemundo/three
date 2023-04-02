@@ -1,0 +1,19 @@
+.fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+.pill {
+  //transition: all 1s ease;
+
+  height: 616px;
+  will-change: clip-path;
+  clip-path: inset(0% 0% round 0%);
+  background-color: #222222;
+}
+
+.container {
+  padding: 4rem 0;
+  height: 400vh;
+  background: #222222;
+}

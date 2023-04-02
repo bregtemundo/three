@@ -1,10 +1,11 @@
 "use client";
 
 import { OrbitControls, Points } from "@react-three/drei";
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { RefObject, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Mesh, ShaderMaterial, TextureLoader } from "three";
+import { useTransform, useScroll, useTime } from "framer-motion";
 
 var glslify = require("glslify");
 
@@ -18,6 +19,8 @@ const CustomMaterial = {
     uTextureSize: { value: new THREE.Vector2(300, 300) },
     uTexture: { value: "" },
     uTouch: { value: null },
+    uMotion: { value: 3.0 },
+    uMouse: { value: new THREE.Vector2(0, 0) },
   },
   vertexShader: `
   attribute float pindex;
@@ -33,6 +36,7 @@ uniform float uSize;
 uniform vec2 uTextureSize;
 uniform sampler2D uTexture;
 uniform sampler2D uTouch;
+uniform float uMotion;
 
 varying vec2 vPUv;
 varying float pointsize;
@@ -75,7 +79,7 @@ void main() {
   float xMove = sin(position.x +  position.y  + uTime);
   float yMove = sin(position.y + uTime);
 
-  displaced.z += (xMove )  *  2.8;
+  displaced.z += (xMove )  *  uMotion;
   //displaced.y += yMove * 0.8;
 
   //displaced.xy += vec2(random(pindex) - 0.5, random(position.x + pindex) - 0.5) * uRandom;
@@ -103,12 +107,15 @@ void main() {
   `,
   fragmentShader: `
   precision highp float;
+  
 
   uniform sampler2D uTexture;
+  uniform float uMouse;
 
 varying vec2 vPUv;
 varying vec2 vUv;
 varying float pointsize;
+
 
 void main() {
 	vec4 color = vec4(0.0);
@@ -129,17 +136,26 @@ void main() {
 	 //float t = smoothstep(0.0, border, dist);
 
 	// final color
-	color = colA;
-	//color.a = t + .2 ;
+	color = colB;
+	//color.a = 0.1 ;
+
+  // if distance to uMouse is less than radius, use colA else use colB
+  float dist = length(uMouse-gl_Position.xy);
+  if(abs(dist) > 100.1){
+    color = colA;
+  } 
+  else{color =  colB;}
 
 	//gl_FragColor = colB;
   
-  float dist = length(gl_PointCoord - vec2(0.5, 0.5));
+  //float dist = length(gl_PointCoord - vec2(0.5, 0.5));
   float t = dist / radius; // calculate interpolation factor
   vec4 endColor = vec4(0.0, 0.0, 0.0, 0.0);
     if (length(gl_PointCoord - vec2(0.5, 0.5)) < radius) {
-      color.a = t;
+        // gradiant
+        //color.a = t;
         gl_FragColor = color;
+        // color fade
         //gl_FragColor = mix( endColor, color, t);
     } else {
         discard; // discard pixels outside the circle
@@ -149,14 +165,65 @@ void main() {
   `,
 };
 
-const Particles = () => {
+type ParticlesProps = {
+  pill: RefObject<HTMLDivElement>;
+};
+
+const Particles = ({ pill }: ParticlesProps) => {
   const ref = useRef<Mesh>(null);
   const materialRef = useRef<ShaderMaterial>(null);
 
-  useFrame(({ clock }) => {
+  const { scrollYProgress } = useScroll({
+    target: pill,
+    //offset: ["50% end"],
+  });
+  const pillWidth = useTransform(scrollYProgress, [0, 1], [100, 50]);
+  const clipPathWidth = useTransform(scrollYProgress, [0, 1], [0, 100]);
+  const clipPathRadius = useTransform(scrollYProgress, [0, 1], [0, 70]);
+  const motionAmount = useTransform(scrollYProgress, [0, 1], [6, 0]);
+  const backgroundColor = useTransform(scrollYProgress, [0, 1], ["#222222", "#1e1e1e"]);
+  const cameraPosition = useTransform(
+    scrollYProgress,
+    [0, 1],
+    [
+      [-2.9101373606688017, -64.38964459455003, 8.252288300761979],
+      [0, 0, 114],
+    ]
+  );
+  const cameraRotation = useTransform(
+    scrollYProgress,
+    [0, 1],
+    [
+      [1.4433294643892935, -0.0447990729184042, 0.3361706600681633],
+      [0, 0, 0],
+    ]
+  );
+
+  useFrame(({ clock, camera, mouse }) => {
+    const offsetX = mouse.x * 5;
+    const offsetY = mouse.y * 5;
+
+    camera.rotation.set(cameraRotation.get()[0], cameraRotation.get()[1], cameraRotation.get()[2]);
+    camera.position.set(
+      cameraPosition.get()[0] + offsetX,
+      cameraPosition.get()[1] + offsetY,
+      cameraPosition.get()[2]
+    );
+
+    if (pill?.current) {
+      const destWidth = window.innerWidth - (clipPathWidth.get() / 100) * (window.innerWidth - 415);
+      //convert width to inset percentage
+      const w = (100 * (window.innerWidth - destWidth)) / window.innerWidth / 2;
+
+      pill.current.style.clipPath = `inset(0% ${w}% round ${clipPathRadius.get()}%)`;
+      pill.current.style.backgroundColor = `${backgroundColor.get()}`;
+    }
     if (!materialRef?.current) return;
     if (!materialRef.current?.uniforms?.uTime) return;
     materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
+    materialRef.current.uniforms.uMotion.value = motionAmount.get();
+
+    materialRef.current.uniforms.uMouse.value = [700, 550];
   });
   const [count, setcount] = useState(3000);
   const [radius, setradius] = useState(20);
