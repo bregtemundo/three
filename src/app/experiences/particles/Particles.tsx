@@ -21,6 +21,7 @@ const CustomMaterial = {
     uTouch: { value: null },
     uMotion: { value: 3.0 },
     uMouse: { value: new THREE.Vector2(0, 0) },
+    uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
   },
   vertexShader: `
   attribute float pindex;
@@ -110,7 +111,8 @@ void main() {
   
 
   uniform sampler2D uTexture;
-  uniform float uMouse;
+  uniform vec2 uMouse;
+  uniform vec2 uResolution;
 
 varying vec2 vPUv;
 varying vec2 vUv;
@@ -140,8 +142,16 @@ void main() {
 	//color.a = 0.1 ;
 
   // if distance to uMouse is less than radius, use colA else use colB
-  float dist = length(uMouse-gl_Position.xy);
-  if(abs(dist) > 100.1){
+  //float dist = length(uMouse - gl_FragCoord.xy);
+
+  // Calculate  coordinates
+  vec2 st = (gl_FragCoord.xy - vec2(uResolution.x, uResolution.y)) / uResolution.xy;
+      
+  float dist = distance(st, uMouse);
+ 
+  //float dist = length(uMouse - ndc);
+
+  if(abs(dist) < .12){
     color = colA;
   } 
   else{color =  colB;}
@@ -167,9 +177,10 @@ void main() {
 
 type ParticlesProps = {
   pill: RefObject<HTMLDivElement>;
+  canvasRef: RefObject<HTMLCanvasElement>;
 };
 
-const Particles = ({ pill }: ParticlesProps) => {
+const Particles = ({ pill, canvasRef }: ParticlesProps) => {
   const ref = useRef<Mesh>(null);
   const materialRef = useRef<ShaderMaterial>(null);
 
@@ -218,15 +229,31 @@ const Particles = ({ pill }: ParticlesProps) => {
       pill.current.style.clipPath = `inset(0% ${w}% round ${clipPathRadius.get()}%)`;
       pill.current.style.backgroundColor = `${backgroundColor.get()}`;
     }
-    if (!materialRef?.current) return;
+    if (!materialRef?.current || !canvasRef?.current) return;
     if (!materialRef.current?.uniforms?.uTime) return;
     materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
     materialRef.current.uniforms.uMotion.value = motionAmount.get();
 
-    materialRef.current.uniforms.uMouse.value = [700, 550];
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const mousePos = new THREE.Vector2(
+      (mouse.x - canvasRect.left) / canvasRect.width,
+      (mouse.y - canvasRect.top) / canvasRect.height
+    );
+    materialRef.current.uniforms.uMouse.value = [mouse.x, mouse.y];
   });
-  const [count, setcount] = useState(3000);
-  const [radius, setradius] = useState(20);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (materialRef.current)
+        materialRef.current.uniforms.uResolution.value = new THREE.Vector2(
+          window.innerWidth,
+          window.innerHeight
+        );
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const limitPoints = false;
 
   // load an image texture from /public, loop through the pixels and create a particle for each pixel

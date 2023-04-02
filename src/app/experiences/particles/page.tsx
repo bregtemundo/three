@@ -33,10 +33,10 @@ const Page = () => {
       <img src="/header.jpg" />
       <div className={styles.container}>
         <div className={styles.pill} ref={pillRef}>
-          <Canvas>
+          <Canvas ref={canvasRef}>
             <OrbitControls /*ref={canvasRef}*/ />
 
-            <Particles pill={pillRef} />
+            <Particles pill={pillRef} canvasRef={canvasRef} />
           </Canvas>
         </div>
       </div>
