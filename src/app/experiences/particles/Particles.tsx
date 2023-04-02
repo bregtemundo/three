@@ -244,7 +244,7 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
 
   useEffect(() => {
     const handleResize = () => {
-      if (materialRef.current)
+      if (materialRef.current && typeof window !== "undefined")
         materialRef.current.uniforms.uResolution.value = new THREE.Vector2(
           window.innerWidth,
           window.innerHeight
