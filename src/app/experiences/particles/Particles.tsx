@@ -9,6 +9,11 @@ import { useTransform, useScroll, useTime } from "framer-motion";
 
 var glslify = require("glslify");
 
+function getBrightness(r: number, g: number, b: number) {
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness;
+}
+
 // Custom shader material
 const CustomMaterial = {
   uniforms: {
@@ -38,6 +43,8 @@ uniform vec2 uTextureSize;
 uniform sampler2D uTexture;
 uniform sampler2D uTouch;
 uniform float uMotion;
+uniform vec2 uMouse;
+uniform vec2 uResolution;
 
 varying vec2 vPUv;
 varying float pointsize;
@@ -83,6 +90,12 @@ void main() {
   displaced.z += (xMove )  *  uMotion;
   //displaced.y += yMove * 0.8;
 
+  // push away from mouse
+  // vec2 st = (position.xy - vec2(uResolution.x, uResolution.y)) / uResolution.xy;
+  // float dist = distance(position.xy, uMouse.xy * uResolution);
+  // if(abs(dist) < 1.0)
+  // displaced.z += ( dist * 3.0);
+
   //displaced.xy += vec2(random(pindex) - 0.5, random(position.x + pindex) - 0.5) * uRandom;
 	float rndz = (random(pindex) + snoise2(vec2(pindex * 0.1, uTime * 0.1)));
 	//displaced.z += rndz * (random(pindex) * 2.0 * uDepth);
@@ -99,6 +112,8 @@ void main() {
   vec4 mvPosition = modelViewMatrix * vec4(displaced, 1.0);
 	mvPosition.xyz += position * psize;
 	vec4 finalPosition = projectionMatrix * mvPosition;
+
+ 
 
   gl_Position = finalPosition;
   pointsize = psize ;
@@ -146,15 +161,11 @@ void main() {
 
   // Calculate  coordinates
   vec2 st = (gl_FragCoord.xy - vec2(uResolution.x, uResolution.y)) / uResolution.xy;
-      
+  
+  // give dots within radius a color
   float dist = distance(st, uMouse);
- 
-  //float dist = length(uMouse - ndc);
-
-  if(abs(dist) < .12){
-    color = colA;
-  } 
-  else{color =  colB;}
+  color = (abs(dist) < .12) ? colA : colB;
+    
 
 	//gl_FragColor = colB;
   
@@ -211,16 +222,13 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
   );
 
   useFrame(({ clock, camera, mouse }) => {
-    const offsetX = mouse.x * 5;
-    const offsetY = mouse.y * 5;
+    const offsetX = mouse.x * 1;
+    const offsetY = mouse.y * 10;
 
     camera.rotation.set(cameraRotation.get()[0], cameraRotation.get()[1], cameraRotation.get()[2]);
-    camera.position.set(
-      cameraPosition.get()[0] + offsetX,
-      cameraPosition.get()[1] + offsetY,
-      cameraPosition.get()[2]
-    );
+    camera.position.set(cameraPosition.get()[0], cameraPosition.get()[1], cameraPosition.get()[2]);
 
+    camera.lookAt(0 + offsetX, 0 + offsetY, 0);
     if (pill?.current) {
       const destWidth = window.innerWidth - (clipPathWidth.get() / 100) * (window.innerWidth - 415);
       //convert width to inset percentage
@@ -252,11 +260,12 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
           window.innerHeight
         );
     };
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const limitPoints = false;
+  const limitPoints = true;
 
   // load an image texture from /public, loop through the pixels and create a particle for each pixel
   const imageTexture = useLoader(THREE.TextureLoader, "/sample-05.png");
@@ -276,7 +285,7 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
 
   const numPoints = imageTexture.image.width * imageTexture.image.height;
   let numVisible = 0;
-  const threshold = 20;
+  const threshold = 10;
   // Get image data
   const canvas = document.createElement("canvas");
   canvas.width = imageTexture.image.width;
@@ -288,7 +297,12 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
 
   numVisible = 0;
   for (let i = 0; i < numPoints; i++) {
-    if (originalColors[i * 4 + 0] > threshold) numVisible++;
+    if (
+      getBrightness(originalColors[i * 4 + 0], originalColors[i * 4 + 1], originalColors[i * 4 + 2]) >
+      threshold
+    )
+      numVisible++;
+    //if (originalColors[i * 4 + 0] > threshold) numVisible++;
   }
 
   if (!limitPoints) numVisible = numPoints;
@@ -317,9 +331,14 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
   const offsets = new Float32Array(numVisible * 3);
   const angles = new Float32Array(numVisible);
   // const vertexColors = new Float32Array(numVisible * 4);
-
+  console.log(numPoints, numVisible);
   for (let i = 0, j = 0; i < numPoints; i++) {
-    if (limitPoints && originalColors[i * 4 + 0] <= threshold) continue;
+    if (
+      limitPoints &&
+      getBrightness(originalColors[i * 4 + 0], originalColors[i * 4 + 1], originalColors[i * 4 + 2]) <=
+        threshold
+    )
+      continue;
 
     // vertexColors[j * 4 + 0] = originalColors[i * 4 + 0] / 255;
     // vertexColors[j * 4 + 1] = originalColors[i * 4 + 1] / 255;
