@@ -199,14 +199,14 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
     target: pill,
     //offset: ["50% end"],
   });
-  const pillWidth = useTransform(scrollYProgress, [0, 1], [100, 50]);
-  const clipPathWidth = useTransform(scrollYProgress, [0, 1], [0, 100]);
-  const clipPathRadius = useTransform(scrollYProgress, [0, 1], [0, 70]);
-  const motionAmount = useTransform(scrollYProgress, [0, 1], [6, 0]);
-  const backgroundColor = useTransform(scrollYProgress, [0, 1], ["#222222", "#1e1e1e"]);
+  const pillWidth = useTransform(scrollYProgress, [1, 0], [100, 50]);
+  const clipPathWidth = useTransform(scrollYProgress, [1, 0], [0, 100]);
+  const clipPathRadius = useTransform(scrollYProgress, [1, 0], [0, 70]);
+  const motionAmount = useTransform(scrollYProgress, [1, 0], [6, 0]);
+  const backgroundColor = useTransform(scrollYProgress, [1, 0], ["#222222", "#1e1e1e"]);
   const cameraPosition = useTransform(
     scrollYProgress,
-    [0, 1],
+    [1, 0],
     [
       [-2.9101373606688017, -64.38964459455003, 8.252288300761979],
       [0, 0, 114],
@@ -214,7 +214,7 @@ const Particles = ({ pill, canvasRef }: ParticlesProps) => {
   );
   const cameraRotation = useTransform(
     scrollYProgress,
-    [0, 1],
+    [1, 0],
     [
       [1.4433294643892935, -0.0447990729184042, 0.3361706600681633],
       [0, 0, 0],
